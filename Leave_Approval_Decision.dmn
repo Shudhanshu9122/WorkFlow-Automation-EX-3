@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="LeaveApprovalDMN" name="Leave Approval Decision" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="5.16.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.3.0">
+  <decision id="leave-approval-decision" name="Leave Approval Routing">
+    <decisionTable id="DecisionTable_190a4r8" hitPolicy="FIRST">
+      <input id="Input_1" label="Is Balance Sufficient?">
+        <inputExpression id="InputExpression_1" typeRef="boolean">
+          <text>requestedDays &lt;= availableBalance</text>
+        </inputExpression>
+      </input>
+      <input id="Input_2" label="Leave Type">
+        <inputExpression id="InputExpression_2" typeRef="string">
+          <text>leaveType</text>
+        </inputExpression>
+      </input>
+      <input id="Input_3" label="Requested Days">
+        <inputExpression id="InputExpression_3" typeRef="integer">
+          <text>requestedDays</text>
+        </inputExpression>
+      </input>
+      <output id="Output_1" label="Routing Decision" name="routingDecision" typeRef="string" />
+      
+      <rule id="DecisionRule_0s9o27e">
+        <description>Reject if insufficient balance</description>
+        <inputEntry id="UnaryTests_001">
+          <text>false</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_002">
+          <text></text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_003">
+          <text></text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_001">
+          <text>"Rejected"</text>
+        </outputEntry>
+      </rule>
+
+      <rule id="DecisionRule_0s9o27f">
+        <description>Auto-approve sick leave &lt;= 3 days</description>
+        <inputEntry id="UnaryTests_004">
+          <text>true</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_005">
+          <text>"Sick"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_006">
+          <text>&lt;= 3</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_002">
+          <text>"Auto-Approved"</text>
+        </outputEntry>
+      </rule>
+
+      <rule id="DecisionRule_0s9o27g">
+        <description>Manager review for sick leave &gt; 3 days</description>
+        <inputEntry id="UnaryTests_007">
+          <text>true</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_008">
+          <text>"Sick"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_009">
+          <text>&gt; 3</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_003">
+          <text>"Manager-Review"</text>
+        </outputEntry>
+      </rule>
+
+      <rule id="DecisionRule_0s9o27h">
+        <description>Manager review for Casual or Earned leave</description>
+        <inputEntry id="UnaryTests_010">
+          <text>true</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_011">
+          <text>"Casual", "Earned"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_012">
+          <text></text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_004">
+          <text>"Manager-Review"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram>
+      <dmndi:DMNShape dmnElementRef="leave-approval-decision">
+        <dc:Bounds height="80" width="180" x="160" y="80" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

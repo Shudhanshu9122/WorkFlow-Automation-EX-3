@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.16.0">
+  <bpmn:process id="LeaveRequestProcess" name="Leave Request Process" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_LeaveRequest" name="Leave Request Submitted">
+      <bpmn:outgoing>Flow_0y1d8y8</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:serviceTask id="Task_FetchBalance" name="Fetch Available Leave Balance">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="fetch-balance" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0y1d8y8</bpmn:incoming>
+      <bpmn:outgoing>Flow_1b2c3d4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:businessRuleTask id="Task_EvaluateRules" name="Evaluate Leave Rules">
+      <bpmn:extensionElements>
+        <zeebe:calledDecision decisionId="leave-approval-decision" resultVariable="routingDecision" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1b2c3d4</bpmn:incoming>
+      <bpmn:outgoing>Flow_2c3d4e5</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+
+    <bpmn:exclusiveGateway id="Gateway_Routing" name="Routing Decision">
+      <bpmn:incoming>Flow_2c3d4e5</bpmn:incoming>
+      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ManagerReview</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AutoApproved</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:sequenceFlow id="Flow_0y1d8y8" sourceRef="StartEvent_LeaveRequest" targetRef="Task_FetchBalance" />
+    <bpmn:sequenceFlow id="Flow_1b2c3d4" sourceRef="Task_FetchBalance" targetRef="Task_EvaluateRules" />
+    <bpmn:sequenceFlow id="Flow_2c3d4e5" sourceRef="Task_EvaluateRules" targetRef="Gateway_Routing" />
+
+    <bpmn:sequenceFlow id="Flow_Rejected" name="Rejected" sourceRef="Gateway_Routing" targetRef="Task_NotifyRejection">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=routingDecision = "Rejected"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:serviceTask id="Task_NotifyRejection" name="Notify Employee (Insufficient Balance)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-employee" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Rejected</bpmn:incoming>
+      <bpmn:outgoing>Flow_3d4e5f6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_Rejected" name="Leave Rejected">
+      <bpmn:incoming>Flow_3d4e5f6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_3d4e5f6" sourceRef="Task_NotifyRejection" targetRef="EndEvent_Rejected" />
+
+    <bpmn:sequenceFlow id="Flow_ManagerReview" name="Manager-Review" sourceRef="Gateway_Routing" targetRef="Task_ManagerApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=routingDecision = "Manager-Review"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:userTask id="Task_ManagerApproval" name="Manager Approval">
+      <bpmn:incoming>Flow_ManagerReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_4e5f6g7</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="Gateway_ManagerDecision" name="Manager Approved?">
+      <bpmn:incoming>Flow_4e5f6g7</bpmn:incoming>
+      <bpmn:outgoing>Flow_ManagerApproved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ManagerRejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_4e5f6g7" sourceRef="Task_ManagerApproval" targetRef="Gateway_ManagerDecision" />
+
+    <bpmn:sequenceFlow id="Flow_ManagerRejected" name="No" sourceRef="Gateway_ManagerDecision" targetRef="Task_NotifyManagerRejection">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=managerDecision = "Rejected"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:serviceTask id="Task_NotifyManagerRejection" name="Notify Employee (Manager Rejected)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="notify-employee" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ManagerRejected</bpmn:incoming>
+      <bpmn:outgoing>Flow_5f6g7h8</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_ManagerRejected" name="Leave Rejected">
+      <bpmn:incoming>Flow_5f6g7h8</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_5f6g7h8" sourceRef="Task_NotifyManagerRejection" targetRef="EndEvent_ManagerRejected" />
+
+    <bpmn:sequenceFlow id="Flow_AutoApproved" name="Auto-Approved" sourceRef="Gateway_Routing" targetRef="Task_UpdateHR">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=routingDecision = "Auto-Approved"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ManagerApproved" name="Yes" sourceRef="Gateway_ManagerDecision" targetRef="Task_UpdateHR">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=managerDecision = "Approved"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:serviceTask id="Task_UpdateHR" name="Forward to HR &#38; Update Balance">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-hr" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_AutoApproved</bpmn:incoming>
+      <bpmn:incoming>Flow_ManagerApproved</bpmn:incoming>
+      <bpmn:outgoing>Flow_6g7h8i9</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_Approved" name="Process Completed">
+      <bpmn:incoming>Flow_6g7h8i9</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_6g7h8i9" sourceRef="Task_UpdateHR" targetRef="EndEvent_Approved" />
+
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="LeaveRequestProcess">
+      <bpmndi:BPMNShape id="StartEvent_LeaveRequest_di" bpmnElement="StartEvent_LeaveRequest">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FetchBalance_di" bpmnElement="Task_FetchBalance">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EvaluateRules_di" bpmnElement="Task_EvaluateRules">
+        <dc:Bounds x="400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Routing_di" bpmnElement="Gateway_Routing" isMarkerVisible="true">
+        <dc:Bounds x="565" y="95" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyRejection_di" bpmnElement="Task_NotifyRejection">
+        <dc:Bounds x="670" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Rejected_di" bpmnElement="EndEvent_Rejected">
+        <dc:Bounds x="822" y="232" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ManagerApproval_di" bpmnElement="Task_ManagerApproval">
+        <dc:Bounds x="670" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ManagerDecision_di" bpmnElement="Gateway_ManagerDecision" isMarkerVisible="true">
+        <dc:Bounds x="825" y="95" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyManagerRejection_di" bpmnElement="Task_NotifyManagerRejection">
+        <dc:Bounds x="930" y="210" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ManagerRejected_di" bpmnElement="EndEvent_ManagerRejected">
+        <dc:Bounds x="1082" y="232" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdateHR_di" bpmnElement="Task_UpdateHR">
+        <dc:Bounds x="930" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Approved_di" bpmnElement="EndEvent_Approved">
+        <dc:Bounds x="1082" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNEdge id="Flow_0y1d8y8_di" bpmnElement="Flow_0y1d8y8">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1b2c3d4_di" bpmnElement="Flow_1b2c3d4">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="400" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2c3d4e5_di" bpmnElement="Flow_2c3d4e5">
+        <di:waypoint x="500" y="120" />
+        <di:waypoint x="565" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Rejected_di" bpmnElement="Flow_Rejected">
+        <di:waypoint x="590" y="145" />
+        <di:waypoint x="590" y="250" />
+        <di:waypoint x="670" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3d4e5f6_di" bpmnElement="Flow_3d4e5f6">
+        <di:waypoint x="770" y="250" />
+        <di:waypoint x="822" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManagerReview_di" bpmnElement="Flow_ManagerReview">
+        <di:waypoint x="615" y="120" />
+        <di:waypoint x="670" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4e5f6g7_di" bpmnElement="Flow_4e5f6g7">
+        <di:waypoint x="770" y="120" />
+        <di:waypoint x="825" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManagerRejected_di" bpmnElement="Flow_ManagerRejected">
+        <di:waypoint x="850" y="145" />
+        <di:waypoint x="850" y="250" />
+        <di:waypoint x="930" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5f6g7h8_di" bpmnElement="Flow_5f6g7h8">
+        <di:waypoint x="1030" y="250" />
+        <di:waypoint x="1082" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AutoApproved_di" bpmnElement="Flow_AutoApproved">
+        <di:waypoint x="590" y="95" />
+        <di:waypoint x="590" y="40" />
+        <di:waypoint x="980" y="40" />
+        <di:waypoint x="980" y="80" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManagerApproved_di" bpmnElement="Flow_ManagerApproved">
+        <di:waypoint x="875" y="120" />
+        <di:waypoint x="930" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6g7h8i9_di" bpmnElement="Flow_6g7h8i9">
+        <di:waypoint x="1030" y="120" />
+        <di:waypoint x="1082" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
